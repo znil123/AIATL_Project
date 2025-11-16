@@ -40,7 +40,7 @@ def main():
                 Welcome to the **Patients Dashboard**. You can input your symptoms below to help healthcare providers understand your condition.
             """)
 
-            with st.form("symptom_form"):
+            with st.form("patient_dashboard_symptom_form"):
                 symptoms = st.text_area("Describe your symptoms here:", height=200)
                 submit = st.form_submit_button("Submit Symptoms")
 
@@ -86,10 +86,6 @@ def main():
                                     import time
                                     time.sleep(5)
                                     
-                                    # Check what files were created
-                                    files_created = os.listdir(analysis_dir)
-                                    st.write(f"Files created: {files_created}")
-                                    
                                     # Check if the file was created and has content
                                     if os.path.exists(file_path):
                                         with open(file_path, "r", encoding="utf-8") as f:
@@ -129,12 +125,6 @@ def main():
     st.subheader("AI Doctor Analysis Results")
 
     try:
-        # Debug: Show what files exist in the analysis_outputs directory
-        analysis_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "analysis_outputs")
-        if os.path.exists(analysis_dir):
-            files = os.listdir(analysis_dir)
-            st.write(f"Debug: Files in analysis_outputs: {files}")
-        
         # Check if file exists and has content
         if os.path.exists(file_path):
             with open(file_path, "r", encoding="utf-8") as file:

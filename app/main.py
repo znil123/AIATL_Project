@@ -21,43 +21,44 @@ def main():
         initial_sidebar_state="expanded"
     )
     
-    # Sidebar for login status
+    # Sidebar navigation
     st.sidebar.title("AIATL Healthcare System")
+    st.sidebar.markdown("---")
+    
+    # Navigation menu
+    page = st.sidebar.selectbox(
+        "Navigate to:",
+        [
+            "Home",
+            "Login",
+            "Register",
+            "Patient Dashboard",
+            "Doctor Dashboard"
+        ]
+    )
+    
     st.sidebar.markdown("---")
     
     # Show login status
     if "logged_in" in st.session_state and st.session_state["logged_in"]:
         st.sidebar.success(f"Logged in as: {st.session_state.get('username', 'Unknown')}")
         st.sidebar.write(f"Role: {st.session_state.get('role', 'Unknown').title()}")
-        if st.sidebar.button("Logout"):
+        if st.sidebar.button("Logout", key="sidebar_logout"):
             st.session_state.clear()
             st.rerun()
     else:
         st.sidebar.info("Please log in to access patient/doctor features")
     
-    # Top navigation tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "Home",
-        "Login",
-        "Register",
-        "Patient Dashboard",
-        "Doctor Dashboard"
-    ])
-    
-    # Route to appropriate page based on selected tab
-    with tab1:
+    # Route to appropriate page
+    if page == "Home":
         home.main()
-    
-    with tab2:
+    elif page == "Login":
         login.main()
-    
-    with tab3:
+    elif page == "Register":
         register.main()
-    
-    with tab4:
+    elif page == "Patient Dashboard":
         patient_dashboard.main()
-    
-    with tab5:
+    elif page == "Doctor Dashboard":
         doctor_dashboard.main()
 
 if __name__ == "__main__":

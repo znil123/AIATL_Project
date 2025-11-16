@@ -15,7 +15,7 @@ def main():
                "Welcome, Doctor! Use the search bar below to view a patient's symptoms."
            )
 
-            with st.form("search_form"):
+            with st.form("doctor_dashboard_search_form"):
                username = st.text_input("Enter the patient's username:")
                submit = st.form_submit_button("Search")
 

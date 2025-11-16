@@ -12,7 +12,7 @@ def main():
     st.header("Login")
     st.write("Access your account by entering your credentials below.")
 
-    with st.form("login_form"):
+    with st.form("login_page_form"):
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
         submit = st.form_submit_button("Login")
@@ -51,7 +51,7 @@ def main():
         st.write(
             f"Logged in as **{st.session_state['username']}** ({st.session_state['role'].capitalize()})"
         )
-        if st.button("Logout"):
+        if st.button("Logout", key="login_page_logout"):
             st.session_state.clear()
             st.success("You have been logged out.")
             st.rerun()

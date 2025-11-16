@@ -36,7 +36,7 @@ def main():
     st.write("Create a new account by filling in the form below.")
 
     # Registration Form
-    with st.form("registration_form"):
+    with st.form("register_page_form"):
         name = st.text_input("Full Name")
         email = st.text_input("Email Address")
         phone = st.text_input("Phone Number")
