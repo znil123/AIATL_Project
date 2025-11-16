@@ -1,6 +1,5 @@
 import streamlit as st
 from app.utils.helpers import load_css, display_header, get_mongo_client, get_doctor_specialty, get_username_by_full_name
-import os
 
 def main():
     load_css("app/static/css/styles.css")
@@ -50,41 +49,59 @@ def main():
                        )
             st.markdown("---")
             st.subheader("Alerts")
-            doctor_username=st.session_state.get('username', None)
-            doctor_specialty=get_doctor_specialty(doctor_username)
-            # Path to the report.txt file
-            report_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "analysis_outputs", "final_report.txt")
-
-                # Check if the report file exists
-            if not os.path.exists(report_path):
-                st.warning("No report file found.")
-            else:
-                try:
-                    with open(report_path, "r") as file:
-                        report_content = file.read().strip()
-
-                    if not report_content:
-                        st.info("Report file is empty.")
-                    else:
-                        # Split the report content into words
-                        words = report_content.split()
-                        # Extract specialty and patient name
-                        report_specialty = words[0]
-                        patient_full_name = words[1].replace(",", "")
-                        report_body = words[2][0].upper() + words[2][1:]+ " " + ' '.join(words[3:])  # Rest of the report
-
-                            # Compare report specialty with doctor's specialty (case-insensitive)
-                        if report_specialty.lower() == doctor_specialty.lower() + ".":
-                            # Fetch username based on patient's full name
-                                # Display the alert
-                                st.write(f"**Patient Name:** {patient_full_name}")
-                                st.write("**Report Content:**")
-                                st.write(report_body)
+            doctor_username = st.session_state.get('username', None)
+            doctor_specialty = get_doctor_specialty(doctor_username)
+            
+            # Get the most recent analysis from MongoDB
+            client = get_mongo_client()
+            if client:
+                db = client["myDatabase"]
+                analysis_collection = db["analysis_results"]
+                
+                # Get the most recent analysis
+                latest_analysis = analysis_collection.find_one(
+                    sort=[("created_at", -1)]  # Get most recent
+                )
+                
+                if not latest_analysis:
+                    st.info("No analysis reports found.")
+                else:
+                    try:
+                        report_content = latest_analysis.get("final_report", "")
+                        
+                        if not report_content:
+                            st.info("Report is empty.")
                         else:
-                            st.info("No alerts for your specialty at this time.")
-
-                except Exception as e:
-                    st.error(f"An error occurred while processing the report: {e}")
+                            # Parse the report to extract specialty and patient info
+                            # The report format appears to be: "Specialty PatientName, Report body..."
+                            words = report_content.split()
+                            if len(words) >= 2:
+                                # Extract specialty and patient name
+                                report_specialty = words[0]
+                                patient_full_name = words[1].replace(",", "")
+                                report_body = ' '.join(words[2:]) if len(words) > 2 else ""
+                                
+                                # Compare report specialty with doctor's specialty (case-insensitive)
+                                # Remove any trailing punctuation from report_specialty
+                                report_specialty_clean = report_specialty.rstrip('.,!?').lower()
+                                doctor_specialty_clean = doctor_specialty.lower() if doctor_specialty else ""
+                                
+                                if report_specialty_clean == doctor_specialty_clean:
+                                    # Display the alert
+                                    st.write(f"**Patient Name:** {patient_full_name}")
+                                    st.write("**Report Content:**")
+                                    st.write(report_body if report_body else report_content)
+                                else:
+                                    st.info("No alerts for your specialty at this time.")
+                            else:
+                                # If format doesn't match expected, show the full report
+                                st.write("**Latest Report:**")
+                                st.write(report_content)
+                                
+                    except Exception as e:
+                        st.error(f"An error occurred while processing the report: {e}")
+            else:
+                st.error("Failed to connect to the database. Please try again later.")
 
         else:
             st.error("Access Denied: You do not have permission to view this page.")

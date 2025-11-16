@@ -6,7 +6,6 @@ from app.utils.helpers import (
     get_mongo_client,
 )
 import json
-import os
 from datetime import datetime
 import warnings
 import logging
@@ -30,9 +29,6 @@ def main():
 
     st.markdown("---")
     st.header("Patients Page")
-
-    # Define file paths at the top
-    file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "analysis_outputs", "final_report.txt")
 
     if "logged_in" in st.session_state and st.session_state["logged_in"]:
         if st.session_state["role"] == "patient":
@@ -73,30 +69,27 @@ def main():
                             # Run AI crew analysis
                             with st.spinner("AI doctors are analyzing your symptoms..."):
                                 try:
-                                    # Clear any existing files first
-                                    analysis_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "analysis_outputs")
-                                    for file in os.listdir(analysis_dir):
-                                        if file.endswith('.txt'):
-                                            os.remove(os.path.join(analysis_dir, file))
-                                    
                                     st.write("Starting AI analysis...")
-                                    run(symptoms.strip(), user_profile.get("name","Name not specified"), user_profile.get("ethnicity","Ethnicity not defined"), user_profile.get("sex", "Sex is not defined"))
+                                    # Run analysis and store results in MongoDB
+                                    run(
+                                        symptoms.strip(), 
+                                        user_profile.get("name", "Name not specified"), 
+                                        user_profile.get("ethnicity", "Ethnicity not defined"), 
+                                        user_profile.get("sex", "Sex is not defined"),
+                                        username=st.session_state["username"]
+                                    )
                                     
-                                    # Wait a bit for file to be written
-                                    import time
-                                    time.sleep(5)
+                                    # Check if analysis was stored in MongoDB
+                                    analysis_collection = db["analysis_results"]
+                                    latest_analysis = analysis_collection.find_one(
+                                        {"username": st.session_state["username"]},
+                                        sort=[("created_at", -1)]  # Get most recent
+                                    )
                                     
-                                    # Check if the file was created and has content
-                                    if os.path.exists(file_path):
-                                        with open(file_path, "r", encoding="utf-8") as f:
-                                            content = f.read().strip()
-                                        if content:
-                                            st.success("AI analysis complete! Check the results below.")
-                                        else:
-                                            st.warning("AI analysis completed but no results were generated.")
-                                            st.write(f"File exists but is empty. File size: {os.path.getsize(file_path)} bytes")
+                                    if latest_analysis and latest_analysis.get("final_report"):
+                                        st.success("AI analysis complete! Check the results below.")
                                     else:
-                                        st.error("AI analysis failed - no output file created.")
+                                        st.warning("AI analysis completed but no results were generated.")
                                         
                                 except Exception as e:
                                     st.error(f"AI analysis failed: {e}")
@@ -125,17 +118,28 @@ def main():
     st.subheader("AI Doctor Analysis Results")
 
     try:
-        # Check if file exists and has content
-        if os.path.exists(file_path):
-            with open(file_path, "r", encoding="utf-8") as file:
-                content = file.read().strip()
+        # Get analysis results from MongoDB
+        client = get_mongo_client()
+        if client:
+            db = client["myDatabase"]
+            analysis_collection = db["analysis_results"]
             
-            if content:
-                st.text_area("Doctor Recommendation and Potential Diagnoses", content, height=300)
+            # Get the most recent analysis for the logged-in user
+            if "logged_in" in st.session_state and st.session_state["logged_in"]:
+                latest_analysis = analysis_collection.find_one(
+                    {"username": st.session_state["username"]},
+                    sort=[("created_at", -1)]  # Get most recent
+                )
+                
+                if latest_analysis and latest_analysis.get("final_report"):
+                    content = latest_analysis["final_report"]
+                    st.text_area("Doctor Recommendation and Potential Diagnoses", content, height=300)
+                else:
+                    st.info("No analysis results yet. Submit your symptoms above to get AI doctor recommendations.")
             else:
-                st.info("No analysis results yet. Submit your symptoms above to get AI doctor recommendations.")
+                st.info("Please log in to view your analysis results.")
         else:
-            st.info("No analysis results yet. Submit your symptoms above to get AI doctor recommendations.")
+            st.error("Failed to connect to the database. Please try again later.")
             
     except Exception as e:
         st.error(f"An error occurred while reading the analysis: {e}")
